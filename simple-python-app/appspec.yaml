@@ -1,0 +1,57 @@
+version: 0.0
+os: linux
+files:
+  # This copies all files from the artifact's root (including appspec.yml, simple-python-app/...)
+  # to the specified destination on the EC2 instance.
+  # When hooks run, their 'location' refers to the script's path *within the original artifact*.
+  - source: /
+    destination: /opt/codedeploy-deployment-root/ # The target directory on your EC2 instance
+
+permissions:
+  # Set execute permissions for all scripts in the 'scripts' directory
+  - object: /opt/codedeploy-deployment-root/simple-python-app/scripts/install_awscli.sh
+    pattern: "**"
+    owner: root # Or 'ubuntu' if your user is ubuntu, but 'root' is safer for system operations
+    group: root # Or 'ubuntu'
+    mode: 755
+  - object: /opt/codedeploy-deployment-root/simple-python-app/scripts/start_container.sh
+    pattern: "**"
+    owner: root
+    group: root
+    mode: 755
+  - object: /opt/codedeploy-deployment-root/simple-python-app/scripts/stop_container.sh
+    pattern: "**"
+    owner: root
+    group: root
+    mode: 755
+  # --- NEW: Permissions for the cleanup script ---
+  - object: /opt/codedeploy-deployment-root/simple-python-app/scripts/clean_docker_images.sh
+    pattern: "**"
+    owner: root
+    group: root
+    mode: 755
+
+hooks:
+  BeforeInstall:
+    # --- NEW: Run Docker image cleanup before installing the new version ---
+    - location: simple-python-app/scripts/clean_docker_images.sh
+      timeout: 300 # Allow up to 5 minutes for cleanup
+      runas: root # Run as root to ensure Docker commands have permissions
+    # The 'location' here must be the path to the script *relative to the root of your deployment artifact*.
+    # Since 'install_awscli.sh' is now at 'simple-python-app/scripts/' within the artifact,
+    # this is its correct relative path.
+    # - location: simple-python-app/scripts/install_awscli.sh
+    #   timeout: 300
+    #   runas: root
+
+  ApplicationStop:
+    # Corrected path for stop_container.sh
+    - location: simple-python-app/scripts/stop_container.sh
+      timeout: 300
+      runas: root
+
+  ApplicationStart:
+    # Corrected path for start_container.sh
+    - location: simple-python-app/scripts/start_container.sh
+      timeout: 300
+      runas: root

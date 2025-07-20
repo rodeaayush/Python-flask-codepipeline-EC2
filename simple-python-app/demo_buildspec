@@ -1,0 +1,70 @@
+version: 0.2
+env:
+  variables:
+    DOCKER_USERNAME_SSM_PATH: "/myapp/docker-credentials/username"
+    DOCKER_PASSWORD_SSM_PATH: "/myapp/docker-credentials/password"
+    DOCKER_URL_SSM_PATH: "/myapp/docker-credentials/url"
+    DOCKER_REPO_SSM_PATH: "/myapp/docker-credentials/repo" # This will contain 'your-dockerhub-username/your-repo-name'
+phases:
+  install:
+    commands:
+      - echo "Installing build and test dependencies..."
+      # Install your application's requirements (Flask)
+      - pip install -r simple-python-app/requirements.txt
+      # Install test specific dependencies (pytest, requests for HTTP testing)
+      - pip install pytest requests
+  pre_build:
+    commands:
+      - echo "Fetching Docker credentials from SSM Parameter Store..."
+      - export DOCKER_USERNAME=$(aws ssm get-parameters --names "${DOCKER_USERNAME_SSM_PATH}" --query "Parameters[0].Value" --output text)
+      - export DOCKER_PASSWORD=$(aws ssm get-parameters --names "${DOCKER_PASSWORD_SSM_PATH}" --with-decryption --query "Parameters[0].Value" --output text)
+      - export DOCKER_URL=$(aws ssm get-parameters --names "${DOCKER_URL_SSM_PATH}" --query "Parameters[0].Value" --output text)
+      - export DOCKER_REPO=$(aws ssm get-parameters --names "${DOCKER_REPO_SSM_PATH}" --query "Parameters[0].Value" --output text)
+      - echo "Logging in to Docker Hub..."
+      - echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin "$DOCKER_URL"
+  build:
+    commands:
+      - echo "Navigating to application directory..."
+      - cd simple-python-app/
+      - echo "Building Docker image..."
+      - docker build -t "${DOCKER_URL}/${DOCKER_REPO}:latest" .
+
+      # --- START TEST EXECUTION ---
+      - echo "Running application tests against the newly built Docker image..."
+
+      # Run the newly built Docker container locally within CodeBuild for testing
+      - docker run -d -p 5000:5000 --name my-test-app "${DOCKER_URL}/${DOCKER_REPO}:latest"
+      - sleep 15 # Give the Flask app enough time to start up completely
+
+      # --- Option 1: Basic HTTP health checks using curl ---
+      # These commands will fail the build if the curl request fails (e.g., app not running or returns HTTP error)
+      - echo "Performing basic HTTP health checks..."
+      - curl -f http://localhost:5000/ || (echo "Home page check failed!" && exit 1)
+      - curl -f http://localhost:5000/about || (echo "About page check failed!" && exit 1)
+      - curl -f http://localhost:5000/contact || (echo "Contact page check failed!" && exit 1)
+      - echo "Basic HTTP health checks passed."
+
+      # --- Option 2: Run Python unit/integration tests using pytest ---
+      # This assumes you have 'pytest' installed (via install phase) and test files in simple-python-app/tests/
+      # Uncomment the following lines if you have Python tests
+      #- echo "Running Python pytest tests..."
+      #- python -m pytest tests/ || (echo "Python tests failed!" && exit 1)
+      #- echo "Python pytest tests passed."
+
+      # Clean up the temporary test container regardless of test outcome (using || true to prevent build failure on stop/rm errors)
+      - echo "Stopping and removing temporary test container..."
+      - docker stop my-test-app || true
+      - docker rm my-test-app || true
+      # --- END TEST EXECUTION ---
+
+      - echo "Returning to root directory..."
+      - cd .. # Navigate back to the root of the artifact for CodeDeploy
+  post_build:
+    commands:
+      - echo "Pushing Docker image to Docker Hub..."
+      - docker push "${DOCKER_URL}/${DOCKER_REPO}:latest"
+      - echo "Build completed successfully!"
+artifacts:
+  files:
+    - '**/*' # This packages all files from the root of your source repository into the CodeBuild artifact.
+    # This ensures your appspec.yml and scripts/ directory are included for CodeDeploy.

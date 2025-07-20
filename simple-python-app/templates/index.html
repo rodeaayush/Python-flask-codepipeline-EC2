@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Home | My Flask App{% endblock %}
+{% block heading %}Welcome to My Flask Application!{% endblock %}
+{% block content %}
+    <p>This is the central hub of my simple, yet robust, web application. Engineered for scalability and high availability on AWS, it serves as a testament to modern cloud deployment practices.</p>
+    <p>Feel free to explore the site using the navigation links above. Discover more about my journey in Cloud & DevOps, or reach out to connect!</p>
+    <div class="mt-8 flex justify-center space-x-4">
+        <a href="/about" class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-200">Learn About Me</a>
+        <a href="/contact" class="px-6 py-3 bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition-colors duration-200">Contact Me</a>
+    </div>
+{% endblock %}

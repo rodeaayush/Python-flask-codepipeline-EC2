@@ -1,0 +1,39 @@
+/* static/css/style.css */
+
+/* Basic custom styles for Inter font if not loaded by Tailwind implicitly */
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+/* Custom nav link hover effect */
+.nav-link {
+    position: relative;
+    padding-bottom: 0.25rem; /* Space for the underline */
+    transition: color 0.3s ease;
+}
+
+.nav-link::after {
+    content: '';
+    position: absolute;
+    width: 0%;
+    height: 2px;
+    background-color: white; /* Underline color */
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    transition: width 0.3s ease-in-out;
+}
+
+.nav-link:hover::after {
+    width: 80%; /* Expand width on hover */
+}
+
+/* Simple box shadow for better depth on elements */
+.shadow-custom {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Ensure the main content div has a nice rounded look */
+.rounded-2xl {
+    border-radius: 1.5rem; /* Equivalent to Tailwind's rounded-2xl */
+}

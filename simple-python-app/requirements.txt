@@ -1,0 +1,6 @@
+flask
+requests
+pytest
+gunicorn
+PyMySQL  # MySQL driver
+Flask-SQLAlchemy
